@@ -21,18 +21,19 @@
       background-size: cover;
     }
 
-    .moon {
-      position: fixed;
-      top: 36px;
-      right: 50px;
-      width: 260px;
-      height: 260px;
-      border-radius: 50%;
-      z-index: 40;
-      pointer-events: none;
-      animation: pulseGlow 3s ease-in-out infinite;
-      object-fit: contain;
-    }
+.moon {
+  position: fixed;
+  top: 5vh;
+  right: 6vw;
+  width: clamp(100px, 25vw, 260px);
+  height: clamp(100px, 25vw, 260px);
+  border-radius: 50%;
+  z-index: 40;
+  pointer-events: none;
+  animation: pulseGlow 3s ease-in-out infinite;
+  object-fit: contain;
+}
+
 
     #starfield {
       position: fixed;
@@ -451,3 +452,4 @@
   </script>
 </body>
 </html>
+
