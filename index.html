@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <title>Trung Thu 3D - Chữ Bay và Đèn Lồng Vô Cực</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=5,user-scalable=yes" />
+  <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --text-color:#ffb8ec;
+      --shadow:0 0 8px rgba(255,200,255,0.55);
+    }
+    html,body{height:100%;margin:0;padding:0;background:#000;font-family:"Segoe UI",Roboto,sans-serif;}
+    body{
+      overflow:hidden;
+      background:url('https://i.imgur.com/RXLqgb9.png') no-repeat center/cover;
+      background-size:cover;
+    }
+
+    .moon{
+      position:fixed;top:36px;right:50px;width:260px;height:260px;border-radius:50%;
+      z-index:40;pointer-events:none;animation:pulseGlow 3s ease-in-out infinite;
+      object-fit:contain;
+    }
+
+    #starfield{position:fixed;left:0;top:0;width:100%;height:100%;z-index:1;pointer-events:none;}
+    #scene{position:absolute;inset:0;z-index:20;perspective:800px;}
+    #scene-rotator{position:absolute;inset:0;transform-style:preserve-3d;transition:transform 0.12s linear;will-change:transform;transform-origin:center center;}
+    .floatWrap{position:absolute;transform-style:preserve-3d;will-change:transform;pointer-events:auto;}
+    .floatText{
+      display:inline-block;color:var(--text-color);text-shadow:var(--shadow);
+      font-weight:700;white-space:nowrap;transform-origin:center;line-height:1;
+      pointer-events:none;transform:translate(-50%,-50%);font-family:"Dancing Script",cursive;
+    }
+    .lantern{display:inline-block;transform-origin:center;pointer-events:none;transform:translate(-50%,-50%);border-radius:50%;object-fit:contain;}
+    .hidden{display:none;}
+    @media(max-width:600px){
+      .floatText{font-size:16px;}
+      .lantern{width:60px;height:60px;}
+    }
+    @keyframes flyUp{from{top:100vh;}to{top:0vh;}}
+    @keyframes pulseGlow{
+      0%{filter:drop-shadow(0 0 30px rgba(255,235,140,0.9));}
+      50%{filter:drop-shadow(0 0 40px rgba(255,235,140,1));}
+      100%{filter:drop-shadow(0 0 30px rgba(255,235,140,0.9));}
+    }
+
+    /* Nút bật/tắt nhạc */
+    #musicBtn{
+      position:fixed;bottom:25px;left:25px;width:65px;height:65px;border-radius:50%;
+      border:none;background:radial-gradient(circle at 30% 30%,#ff80df,#d4009b);
+      color:#fff;font-size:28px;cursor:pointer;z-index:100;box-shadow:0 0 20px #ff4de3;
+      transition:transform 0.2s,box-shadow 0.3s;
+    }
+    #musicBtn:hover{transform:scale(1.1);box-shadow:0 0 30px #ffb8ec;}
+    @keyframes pulse{
+      0%{box-shadow:0 0 20px #ff4de3;}
+      50%{box-shadow:0 0 40px #ffb8ec;}
+      100%{box-shadow:0 0 20px #ff4de3;}
+    }
+    #musicBtn.playing{animation:pulse 2s infinite;}
+
+    /* Con thỏ */
+    .rabbit{
+      position:absolute;
+      width:160px;
+      height:160px;
+      z-index:30;
+      pointer-events:none;
+      object-fit:contain;
+      animation: rabbitHop 0.5s ease-in-out infinite;
+    }
+    @keyframes rabbitRunLeft {
+      from { left: 100vw; }
+      to { left: -200px; }
+    }
+    @keyframes rabbitRunRight {
+      from { left: -200px; }
+      to { left: 100vw; }
+    }
+    @keyframes rabbitHop {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="starfield"></canvas>
+  <img class="moon" src="https://www.dropbox.com/scl/fi/28cvagceqwtkzg5eclbiv/Mid_Autumn_Festival_Hd_Transparent__Romantic_Mid_Autumn_Festival_Golden_Moon__Mid_Autumn_Festival__Full_Moon__Moon_PNG_Image_For_Free_Download-removebg-preview.png?rlkey=3673o26rufc68auvcla3d0av5&st=ww902alc&raw=1" alt="Moon">
+  <div id="scene"><div id="scene-rotator"></div></div>
+  <button id="musicBtn" title="Bật/Tắt nhạc">🔊</button>
+  <audio id="background-music" autoplay loop>
+    <source src="https://www.dropbox.com/scl/fi/vhl24zx1dvwvj7hiduqml/bongtrang.mp3?rlkey=ip4st7vx31webv0im37hlfnz8&st=zn3iix5d&raw=1" type="audio/mpeg">
+    <source src="https://files.freemusicarchive.org/storage-freemusicarchive-org/music/no_curator/Scott_Holmes/Inspiring__Uplifting_Music/Scott_Holmes_-_Inspiring_Background_Music.mp3" type="audio/mpeg">
+    Your browser does not support the audio element.
+  </audio>
+
+  <script>
+  // === Nhạc ===
+  const audio = document.getElementById('background-music');
+  const musicBtn = document.getElementById('musicBtn');
+  audio.volume = 0.6;
+  musicBtn.classList.add("playing");
+  audio.addEventListener('error', () => {
+    console.error('Lỗi tải file âm thanh. Vui lòng kiểm tra link Dropbox hoặc dùng link thay thế.');
+  });
+  document.addEventListener('DOMContentLoaded', () => {
+    audio.play().catch(error => {
+      console.error('Lỗi phát âm thanh:', error);
+      document.addEventListener('click', () => {
+        audio.play().catch(err => console.error('Lỗi phát lại:', err));
+      }, { once: true });
+    });
+  });
+  musicBtn.addEventListener('click', () => {
+    if (audio.paused) {
+      audio.play();
+      musicBtn.textContent = "🔊";
+      musicBtn.classList.add("playing");
+    } else {
+      audio.pause();
+      musicBtn.textContent = "🔇";
+      musicBtn.classList.remove("playing");
+    }
+  });
+
+  // === Con thỏ ===
+  function createRabbit() {
+    const rabbit = document.createElement('img');
+    rabbit.className = 'rabbit';
+    rabbit.src = 'https://www.dropbox.com/scl/fi/k86zy0z9sa1yflvzfrzm9/__-__-__-PNG-_-_-_Pngtree-removebg-preview.png?rlkey=krscy8g4593z2vk79e0cvzpp5&st=muodf82j&raw=1';
+    const direction = Math.random() < 0.5 ? 'left' : 'right';
+    rabbit.style.left = direction === 'left' ? '100vw' : '-200px';
+    rabbit.style.top = `${Math.random() * 50 + 25}vh`;
+    rabbit.style.animation = `rabbitRun${direction.charAt(0).toUpperCase() + direction.slice(1)} ${rand(7, 9)}s linear forwards`;
+    if (direction === 'right') rabbit.style.transform = 'scaleX(-1) translateY(0)';
+    document.body.appendChild(rabbit);
+    rabbit.addEventListener('animationend', () => {
+      rabbit.remove();
+      setTimeout(createRabbit, rand(3000, 10000));
+    });
+  }
+  function rand(min, max) { return Math.random() * (max - min) + min; }
+  createRabbit();
+  if (Math.random() < 0.5) setTimeout(createRabbit, rand(1000, 5000));
+
+  // === Văn bản & đèn ===
+  const texts = ["Chúc người đẹp luôn vui vẻ ❤️", "Quên đi mọi buồn phiền 💖", "Trung Thu vui vẻ nhé 🐇", "Một mùa trăng cho đôi mình 🌕", "Luôn bên nhau nhé 💫, Cười nhiều hơn nhé", " Cho xin 500K "];
+  const sceneRotator = document.getElementById('scene-rotator');
+  const scene = document.getElementById('scene');
+  const canvas = document.getElementById('starfield');
+  const ctx = canvas.getContext('2d', {alpha: true});
+  let W, H, stars = [], meteors = [];
+  function resize() {
+    W = canvas.width = innerWidth;
+    H = canvas.height = innerHeight;
+    stars = [];
+    const count = Math.round(W * H / 2400);
+    for (let i = 0; i < count; i++) {
+      stars.push({x: Math.random() * W, y: Math.random() * H, r: Math.random() * 0.9 + 0.1, a: Math.random() * 0.8 + 0.2, t: Math.random() * 0.01 + 0.002});
+    }
+  }
+  function drawStars() {
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      s.a += (Math.random() > 0.5 ? 1 : -1) * s.t;
+      s.a = Math.max(0.03, Math.min(1, s.a));
+      ctx.beginPath();
+      ctx.globalAlpha = s.a;
+      ctx.fillStyle = '#ffd';
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function spawnMeteor() {
+    if (Math.random() < 0.02) {
+      const startX = Math.random() * W;
+      const startY = Math.random() * H / 3;
+      meteors.push({x: startX, y: startY, vx: Math.random() * 18 + 6, vy: Math.random() * 4 + 2, len: Math.random() * 140 + 80, a: 1});
+    }
+  }
+  function drawMeteors() {
+    for (let i = meteors.length - 1; i >= 0; i--) {
+      const m = meteors[i];
+      const x2 = m.x - m.len, y2 = m.y - m.len / 3;
+      const g = ctx.createLinearGradient(m.x, m.y, x2, y2);
+      g.addColorStop(0, `rgba(255,235,140,${m.a})`);
+      g.addColorStop(1, 'rgba(255,235,140,0)');
+      ctx.strokeStyle = g;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      m.x += m.vx;
+      m.y += m.vy;
+      m.a -= 0.02;
+      if (m.a <= 0 || m.x > W + 200 || m.y > H + 200) meteors.splice(i, 1);
+    }
+  }
+  function starLoop() {
+    drawStars();
+    drawMeteors();
+    spawnMeteor();
+    requestAnimationFrame(starLoop);
+  }
+  window.addEventListener('resize', resize);
+  resize();
+  starLoop();
+
+  const TOTAL_TEXT_PER_LAYER = 9, TOTAL_LANTERNS_PER_LAYER = 3;
+  const LAYERS = [
+    {z: 200, opacity: 1, fontSize: 32, lanternSize: 80},
+    {z: 0, opacity: 0.7, fontSize: 24, lanternSize: 60},
+    {z: -200, opacity: 0.4, fontSize: 16, lanternSize: 40}
+  ];
+  function generateGridPositions(rows, cols, minX, maxX, minY, maxY) {
+    const p = [];
+    const xStep = (maxX - minX) / (cols - 1), yStep = (maxY - minY) / (rows - 1);
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = minX + c * xStep + rand(-8, 8), y = minY + r * yStep + rand(-8, 8);
+        p.push({left: x, top: y});
+      }
+    }
+    for (let i = p.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [p[i], p[j]] = [p[j], p[i]];
+    }
+    return p;
+  }
+  const textElements = [];
+  LAYERS.forEach(layer => {
+    const textPos = generateGridPositions(3, 3, 15, 85, 20, 80);
+    for (let i = 0; i < TOTAL_TEXT_PER_LAYER; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'floatWrap';
+      const {left, top} = textPos[i];
+      wrap.style.left = left + 'vw';
+      wrap.style.top = top + 'vh';
+      wrap.style.transform = `translateZ(${layer.z}px)`;
+      const txt = document.createElement('div');
+      txt.className = 'floatText';
+      txt.innerText = texts[Math.floor(Math.random() * texts.length)];
+      txt.style.fontSize = layer.fontSize + 'px';
+      txt.style.opacity = layer.opacity;
+      const dur = rand(12, 20), delay = i * (20 / TOTAL_TEXT_PER_LAYER);
+      wrap.style.animation = `flyUp ${dur}s linear ${delay}s infinite`;
+      wrap.appendChild(txt);
+      sceneRotator.appendChild(wrap);
+      textElements.push({wrap, initialTop: top, duration: dur});
+    }
+    const lanternPos = generateGridPositions(2, 2, 20, 80, 25, 75);
+    for (let i = 0; i < TOTAL_LANTERNS_PER_LAYER; i++) {
+      const wrap = document.createElement('div');
+      wrap.className = 'floatWrap';
+      const {left, top} = lanternPos[i];
+      wrap.style.left = left + 'vw';
+      wrap.style.top = top + 'vh';
+      wrap.style.transform = `translateZ(${layer.z}px)`;
+      const lantern = document.createElement('img');
+      lantern.className = 'lantern';
+      lantern.src = 'https://www.dropbox.com/scl/fi/fex3jyfjvt99l150e4eyc/den.png?rlkey=pvtk9sjj2qwdva4dd1ilwqbiy&st=5uz2qp95&raw=1';
+      lantern.style.width = layer.lanternSize + 'px';
+      lantern.style.height = layer.lanternSize + 'px';
+      lantern.style.opacity = layer.opacity;
+      const dur = rand(12, 20), delay = i * (20 / TOTAL_LANTERNS_PER_LAYER);
+      wrap.style.animation = `flyUp ${dur}s linear ${delay}s infinite`;
+      wrap.appendChild(lantern);
+      sceneRotator.appendChild(wrap);
+      textElements.push({wrap, initialTop: top, duration: dur});
+    }
+  });
+
+  function updateTextPositions() {
+    textElements.forEach(({wrap, initialTop, duration}) => {
+      const rect = wrap.getBoundingClientRect();
+      const topVh = (rect.top / window.innerHeight) * 100;
+      if (topVh < 0) {
+        wrap.style.top = '100vh';
+        wrap.style.animation = `flyUp ${duration}s linear ${rand(0, 2)}s infinite`;
+      }
+    });
+    requestAnimationFrame(updateTextPositions);
+  }
+  requestAnimationFrame(updateTextPositions);
+
+  // === Xoay 3D ===
+  let isDown = false, lastX = 0, lastY = 0, rotX = 0, rotY = 0;
+  sceneRotator.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+  document.addEventListener('pointerdown', e => {
+    isDown = true;
+    lastX = e.clientX;
+    lastY = e.clientY;
+    document.body.style.cursor = 'grabbing';
+  });
+  document.addEventListener('pointerup', () => {
+    isDown = false;
+    document.body.style.cursor = 'default';
+  });
+  document.addEventListener('pointermove', e => {
+    if (!isDown) return;
+    const dx = e.clientX - lastX, dy = e.clientY - lastY;
+    rotY += dx * 0.15;
+    rotX -= dy * 0.12;
+    rotX = Math.max(-80, Math.min(80, rotX));
+    sceneRotator.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    lastX = e.clientX;
+    lastY = e.clientY;
+  });
+  setInterval(() => {
+    if (!isDown) {
+      rotY += 0.08;
+      sceneRotator.style.transform = `rotateX(${rotX}deg) rotateY(${rotY}deg)`;
+    }
+  }, 50);
+
+  // === Zoom ===
+  let perspective = 800;
+  const MIN_PERSPECTIVE = 400, MAX_PERSPECTIVE = 1600;
+  function updatePerspective() {
+    scene.style.perspective = `${perspective}px`;
+  }
+  document.addEventListener('wheel', e => {
+    perspective += e.deltaY * 0.5;
+    perspective = Math.max(MIN_PERSPECTIVE, Math.min(MAX_PERSPECTIVE, perspective));
+    updatePerspective();
+  });
+  let initialDistance = 0;
+  document.addEventListener('touchstart', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      initialDistance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+    }
+  });
+  document.addEventListener('touchmove', e => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      const touch1 = e.touches[0];
+      const touch2 = e.touches[1];
+      const currentDistance = Math.hypot(touch1.clientX - touch2.clientX, touch1.clientY - touch2.clientY);
+      const delta = (initialDistance - currentDistance) * 2;
+      perspective += delta;
+      perspective = Math.max(MIN_PERSPECTIVE, Math.min(MAX_PERSPECTIVE, perspective));
+      updatePerspective();
+      initialDistance = currentDistance;
+    }
+  });
+  </script>
+</body>
+</html>
