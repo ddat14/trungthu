@@ -241,18 +241,18 @@
         ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (!isMobile) drawMeteors();
+      drawMeteors();
     }
     function spawnMeteor() {
-      if (Math.random() < 0.01) {
+      if (Math.random() < (isMobile ? 0.005 : 0.01)) {
         const startX = Math.random() * W;
         const startY = Math.random() * H / 3;
         meteors.push({
           x: startX,
           y: startY,
-          vx: Math.random() * 10 + 5,
-          vy: Math.random() * 2 + 1,
-          len: Math.random() * 100 + 50,
+          vx: Math.random() * (isMobile ? 5 : 10) + 2.5,
+          vy: Math.random() * (isMobile ? 1 : 2) + 0.5,
+          len: Math.random() * (isMobile ? 30 : 50) + 20,
           a: 1
         });
       }
@@ -283,7 +283,7 @@
       if (deltaTime >= 1000 / targetFPS) {
         lastFrameTime = time - (deltaTime % (1000 / targetFPS));
         drawStars();
-        if (!isMobile) spawnMeteor();
+        spawnMeteor();
       }
       requestAnimationFrame(starLoop);
     }
